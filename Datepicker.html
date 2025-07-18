@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Date Range Selector</title>
+  <style>
+    :root {
+      --primary-blue: #181e24;
+    }
+    body { 
+      font-family: Arial, sans-serif; 
+      margin: 2rem; 
+      color: var(--primary-blue);
+      /* Minimalist monochrome background pattern */
+      background: 
+        repeating-linear-gradient(135deg, #f5f8fa 0 40px, #e6f0fa 40px 80px),
+        repeating-linear-gradient(45deg, #fff 0 20px, #f5f8fa 20px 40px);
+      background-blend-mode: lighten;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    /* Subtle circles for extra minimalism */
+    body::before, body::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.08;
+      z-index: 0;
+      pointer-events: none;
+    }
+    body::before {
+      width: 400px;
+      height: 400px;
+      left: -120px;
+      top: -120px;
+      background: #21282f;
+    }
+    body::after {
+      width: 300px;
+      height: 300px;
+      right: -100px;
+      bottom: -100px;
+      background: #222;
+    }
+    .logo-container { 
+      display: flex; 
+      align-items: center; 
+      margin-bottom: 2rem; 
+      color: var(--primary-blue);
+      position: relative;
+      z-index: 1;
+    }
+    .datepicker-iframe { 
+      border: none; 
+      width: 100%; 
+      height: 180px; 
+      position: relative;
+      z-index: 1;
+    }
+    #please-wait { 
+      display: none; 
+      color: var(--primary-blue); 
+      margin-top: 1rem; 
+      position: relative;
+      z-index: 1;
+    }
+    h2 {
+      color: var(--primary-blue);
+      position: relative;
+      z-index: 1;
+    }
+    #welcome-banner {
+      position: relative;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <!-- Add your logo image here -->
+    <img src="logo.png" alt="Hackhawks Logo" style="height:68px;width:68px;border-radius:50%;background:#e6f0fa;border:2px solid var(--primary-blue);">
+    <span style="font-size: 2rem; font-weight: bold; color: var(--primary-blue); margin-left: 1rem; letter-spacing: 2px;">
+      Hackhawks
+    </span>
+  </div>
+  
+  <!-- Dynamic Welcome Banner -->
+  <div id="welcome-banner" style="
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 2rem 0 2rem 0;
+    ">
+    <span id="welcome-text" style="
+      background: linear-gradient(90deg, #181e24 0%, #3a3f47 100%);
+      color: #fff;
+      font-size: 2rem;
+      font-weight: bold;
+      padding: 1.5rem 2.5rem;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px rgba(24,30,36,0.12);
+      text-align: center;
+      min-width: 340px;
+      letter-spacing: 1.5px;
+      border: 2px solid #181e24;
+      text-shadow: 0 2px 8px rgba(24,30,36,0.12);
+      ">
+      Welcome to AI-Driven Solutions!<br>
+      <span style="font-size:1.1rem;font-weight:400;letter-spacing:0.5px;display:block;margin-top:0.5rem;">
+        <em>Empowering your workflow with intelligent automation and<br>data-driven insights. <span style="color:#201d36;">Unleash your productivity!</span></em>
+      </span>
+    </span>
+  </div>
+  
+  <h2>Please select a start date and an end date.</h2>
+  <iframe class="datepicker-iframe" srcdoc='
+    <html>
+      <head>
+        <style>
+          :root {
+            --primary-blue: #181e24;
+          }
+          body { font-family: Arial, sans-serif; margin: 0; color: var(--primary-blue);}
+          .datepicker-container { display: flex; gap: 1rem; align-items: center; padding: 1rem; color: var(--primary-blue);}
+          button { padding: 0.5rem 1rem; color: #fff; background: var(--primary-blue); border: none; border-radius: 4px; cursor: pointer;}
+          label { color: var(--primary-blue); font-size: 1.2rem; }
+          input[type="date"] { 
+            color: var(--primary-blue); 
+            border: 1px solid var(--primary-blue); 
+            border-radius: 4px; 
+            padding: 0.4rem 0.6rem; 
+            font-size: 1.15rem;
+          }
+          .error-message {
+            color: #d32f2f;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+            margin-left: 0.2rem;
+            font-weight: bold;
+          }
+        </style>
+      </head>
+      <body>
+        <form id="date-range-form" class="datepicker-container">
+          <label for="start-date">Start Date:</label>
+          <input type="date" id="start-date" name="start-date" required>
+          <label for="end-date">End Date:</label>
+          <input type="date" id="end-date" name="end-date" required>
+          <button type="submit" id="apply-btn">Apply</button>
+        </form>
+        <div id="date-error" class="error-message" style="display:none;"></div>
+        <script>
+          // Restore cached dates
+          window.onload = () => {
+            const lastStart = localStorage.getItem("lastStartDate");
+            const lastEnd = localStorage.getItem("lastEndDate");
+            if (lastStart) document.getElementById("start-date").value = lastStart;
+            if (lastEnd) document.getElementById("end-date").value = lastEnd;
+            // Set min for end-date if start-date exists
+            if (lastStart) document.getElementById("end-date").min = lastStart;
+          };
+
+          // Disable end-date before start-date
+          document.getElementById("start-date").addEventListener("change", function() {
+            const startVal = this.value;
+            const endInput = document.getElementById("end-date");
+            endInput.min = startVal;
+            // If end date is before new start date, clear it
+            if (endInput.value && endInput.value < startVal) {
+              endInput.value = "";
+            }
+          });
+
+          // Debounce helper
+          let debounceTimeout;
+          function debounce(fn, delay) {
+            return function(...args) {
+              clearTimeout(debounceTimeout);
+              debounceTimeout = setTimeout(() => fn.apply(this, args), delay);
+            };
+          }
+
+          // Debounced submit handler with validation
+          const debouncedSubmit = debounce(async function(e) {
+            e.preventDefault();
+            const start = document.getElementById("start-date").value;
+            const end = document.getElementById("end-date").value;
+            const errorDiv = document.getElementById("date-error");
+            errorDiv.style.display = "none";
+            errorDiv.textContent = "";
+
+            if (!start) {
+              errorDiv.textContent = "Please select a start date first.";
+              errorDiv.style.display = "block";
+              document.getElementById("start-date").focus();
+              return;
+            }
+            if (!end) {
+              errorDiv.textContent = "Please select an end date.";
+              errorDiv.style.display = "block";
+              document.getElementById("end-date").focus();
+              return;
+            }
+            if (end < start) {
+              errorDiv.textContent = "End date must be after start date.";
+              errorDiv.style.display = "block";
+              document.getElementById("end-date").focus();
+              return;
+            }
+
+            localStorage.setItem("lastStartDate", start);
+            localStorage.setItem("lastEndDate", end);
+
+            // Example API call (replace with your actual endpoint)
+            try {
+              const response = await fetch("https://your-backend-api.com/api/data", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ start_date: start, end_date: end })
+              });
+              const data = await response.json();
+              parent.postMessage({start, end, apiData: data}, "*");
+            } catch (err) {
+              parent.postMessage({start, end, apiError: true}, "*");
+            }
+          }, 500);
+
+          document.getElementById("date-range-form").addEventListener("submit", debouncedSubmit);
+        </script>
+      </body>
+    </html>
+  '></iframe>
+  <div id="please-wait">Please Wait…</div>
+  <div id="timeline-section" style="margin: 2.5rem 0; background: #f5f8fa; border-radius: 14px; padding: 2rem; box-shadow: 0 2px 12px rgba(24,30,36,0.06);">
+    <h2 style="color: var(--primary-blue); text-align: center; margin-bottom: 1.5rem;">
+      Weekly Activity Timeline
+    </h2>
+    <div style="display: flex; gap: 1.5rem; justify-content: center; align-items: flex-end; flex-wrap: wrap;">
+      <div>
+        <label for="author-select" style="color: var(--primary-blue); font-weight: bold;">Author:</label>
+        <select id="author-select" style="margin-left: 0.5rem; font-size: 1rem; padding: 0.3rem 0.7rem; border-radius: 4px; border: 1px solid #ccc;">
+          <option value="">All</option>
+        </select>
+      </div>
+      <div>
+        <label for="metric-select" style="color: var(--primary-blue); font-weight: bold;">Metric:</label>
+        <select id="metric-select" style="margin-left: 0.5rem; font-size: 1rem; padding: 0.3rem 0.7rem; border-radius: 4px; border: 1px solid #ccc;">
+          <option value="commits">Commits</option>
+          <option value="additions">Additions</option>
+          <option value="deletions">Deletions</option>
+          <option value="total_changes">Total Changes</option>
+        </select>
+      </div>
+      <button id="refresh-timeline" style="background: var(--primary-blue); color: #fff; border: none; border-radius: 4px; padding: 0.5rem 1.2rem; font-size: 1rem; font-weight: bold; cursor: pointer;">
+        Refresh
+      </button>
+    </div>
+    <canvas id="timeline-canvas" height="320" style="margin-top: 2rem; width: 100%; max-width: 700px; display: block; margin-left: auto; margin-right: auto; background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(24,30,36,0.06);"></canvas>
+  </div>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Fetch authors from endpoint #1 and populate author filter
+    async function loadAuthors() {
+      try {
+        // Replace with your actual endpoint #1
+        const res = await fetch('https://your-backend-api.com/api/authors');
+        const authors = await res.json();
+        const select = document.getElementById('author-select');
+        authors.forEach(author => {
+          const opt = document.createElement('option');
+          opt.value = author;
+          opt.textContent = author;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        // fallback
+        const select = document.getElementById('author-select');
+        ['Alice', 'Bob', 'Carol'].forEach(author => {
+          const opt = document.createElement('option');
+          opt.value = author;
+          opt.textContent = author;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    // Draw timeline chart using endpoint #3
+    let timelineChart;
+    async function drawTimeline() {
+      const author = document.getElementById('author-select').value;
+      const metric = document.getElementById('metric-select').value;
+      // Replace with your actual endpoint #3 and params
+      let url = `https://your-backend-api.com/api/timeline?metric_type=${metric}`;
+      if (author) url += `&author=${encodeURIComponent(author)}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        // Expected data: { days: ['Sun','Mon',...], values: [12,9,...] }
+        const days = data.days || ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const values = data.values || [0,0,0,0,0,0,0];
+
+        const ctx = document.getElementById('timeline-canvas').getContext('2d');
+        if (timelineChart) timelineChart.destroy();
+        timelineChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: days,
+            datasets: [{
+              label: metric.charAt(0).toUpperCase() + metric.slice(1),
+              data: values,
+              backgroundColor: 'rgba(24,30,36,0.8)',
+              borderRadius: 6,
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              title: { display: false }
+            },
+            scales: {
+              x: { grid: { display: false }, title: { display: false } },
+              y: { beginAtZero: true, grid: { color: '#eee' } }
+            }
+          }
+        });
+      } catch (e) {
+        // fallback demo data
+        const ctx = document.getElementById('timeline-canvas').getContext('2d');
+        if (timelineChart) timelineChart.destroy();
+        timelineChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+            datasets: [{
+              label: metric.charAt(0).toUpperCase() + metric.slice(1),
+              data: [2, 5, 8, 3, 7, 6, 4],
+              backgroundColor: 'rgba(24,30,36,0.8)',
+              borderRadius: 6,
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              title: { display: false }
+            },
+            scales: {
+              x: { grid: { display: false }, title: { display: false } },
+              y: { beginAtZero: true, grid: { color: '#eee' } }
+            }
+          }
+        });
+      }
+    }
+
+    document.getElementById('refresh-timeline').onclick = drawTimeline;
+    document.getElementById('author-select').onchange = drawTimeline;
+    document.getElementById('metric-select').onchange = drawTimeline;
+
+    // Initial load
+    loadAuthors().then(drawTimeline);
+  </script>
+  <script>
+    // Animate welcome banner text
+    const welcomeText = document.getElementById("welcome-text");
+    let dots = 0;
+    setInterval(() => {
+      dots = (dots + 1) % 4;
+      welcomeText.textContent = "Welcome to AI-Driven Solutions" + "!".repeat(dots);
+    }, 800);
+
+    // Listen for messages from iframe
+    window.addEventListener("message", function(event) {
+      const { start, end, apiData, apiError } = event.data || {};
+      if (start && end) {
+        document.getElementById("please-wait").style.display = "block";
+        setTimeout(() => {
+          document.getElementById("please-wait").style.display = "none";
+          if (apiError) {
+            alert("API error. Please try again.");
+          } else if (apiData) {
+            alert(`Fetched data for ${start} to ${end}:\n` + JSON.stringify(apiData, null, 2));
+          } else {
+            alert(`Fetched data for ${start} to ${end}`);
+          }
+        }, 1200);
+      }
+    });
+  </script>
+</body>
+</html>
